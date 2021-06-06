@@ -7,13 +7,14 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/volatiletech/null/v8/convert"
+	"github.com/volatiletech/null/v9/convert"
 )
 
 // Int is an nullable int.
 type Int struct {
 	Int   int
 	Valid bool
+	Set   bool
 }
 
 // NewInt creates a new Int
@@ -21,6 +22,7 @@ func NewInt(i int, valid bool) Int {
 	return Int{
 		Int:   i,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -37,8 +39,14 @@ func IntFromPtr(i *int) Int {
 	return NewInt(*i, true)
 }
 
+func (i Int) IsSet() bool {
+	return i.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (i *Int) UnmarshalJSON(data []byte) error {
+	i.Set = true
+
 	if bytes.Equal(data, NullBytes) {
 		i.Valid = false
 		i.Int = 0
@@ -57,6 +65,7 @@ func (i *Int) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (i *Int) UnmarshalText(text []byte) error {
+	i.Set = true
 	if text == nil || len(text) == 0 {
 		i.Valid = false
 		return nil
@@ -90,6 +99,7 @@ func (i Int) MarshalText() ([]byte, error) {
 func (i *Int) SetValid(n int) {
 	i.Int = n
 	i.Valid = true
+	i.Set = true
 }
 
 // Ptr returns a pointer to this Int's value, or a nil pointer if this Int is null.
@@ -108,10 +118,10 @@ func (i Int) IsZero() bool {
 // Scan implements the Scanner interface.
 func (i *Int) Scan(value interface{}) error {
 	if value == nil {
-		i.Int, i.Valid = 0, false
+		i.Int, i.Valid, i.Set = 0, false, false
 		return nil
 	}
-	i.Valid = true
+	i.Valid, i.Set = true, true
 	return convert.ConvertAssign(&i.Int, value)
 }
 

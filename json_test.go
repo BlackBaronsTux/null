@@ -126,6 +126,9 @@ func TestUnmarshalJSON(t *testing.T) {
 	if !bytes.Equal(null.JSON, nil) {
 		t.Errorf("Expected JSON to be []byte nil, but was not: %#v %#v", null.JSON, []byte(nil))
 	}
+	if !null.Set {
+		t.Error("should be Set")
+	}
 }
 
 func TestTextUnmarshalJSON(t *testing.T) {

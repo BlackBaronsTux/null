@@ -39,6 +39,9 @@ func TestUnmarshalUint64(t *testing.T) {
 	err = json.Unmarshal(nullJSON, &null)
 	maybePanic(err)
 	assertNullUint64(t, null, "null json")
+	if !null.Set {
+		t.Error("should be Set")
+	}
 
 	var badType Uint64
 	err = json.Unmarshal(boolJSON, &badType)

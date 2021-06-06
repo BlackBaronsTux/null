@@ -8,13 +8,14 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/volatiletech/null/v8/convert"
+	"github.com/volatiletech/null/v9/convert"
 )
 
 // Int16 is an nullable int16.
 type Int16 struct {
 	Int16 int16
 	Valid bool
+	Set   bool
 }
 
 // NewInt16 creates a new Int16
@@ -22,6 +23,7 @@ func NewInt16(i int16, valid bool) Int16 {
 	return Int16{
 		Int16: i,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -38,11 +40,15 @@ func Int16FromPtr(i *int16) Int16 {
 	return NewInt16(*i, true)
 }
 
+func (i Int16) IsSet() bool {
+	return i.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (i *Int16) UnmarshalJSON(data []byte) error {
+	i.Set = true
 	if bytes.Equal(data, NullBytes) {
-		i.Valid = false
-		i.Int16 = 0
+		i.Int16, i.Valid = 0, false
 		return nil
 	}
 
@@ -55,13 +61,13 @@ func (i *Int16) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("json: %d overflows max int16 value", x)
 	}
 
-	i.Int16 = int16(x)
-	i.Valid = true
+	i.Int16, i.Valid = int16(x), true
 	return nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (i *Int16) UnmarshalText(text []byte) error {
+	i.Set = true
 	if text == nil || len(text) == 0 {
 		i.Valid = false
 		return nil
@@ -95,6 +101,7 @@ func (i Int16) MarshalText() ([]byte, error) {
 func (i *Int16) SetValid(n int16) {
 	i.Int16 = n
 	i.Valid = true
+	i.Set = true
 }
 
 // Ptr returns a pointer to this Int16's value, or a nil pointer if this Int16 is null.
@@ -113,10 +120,10 @@ func (i Int16) IsZero() bool {
 // Scan implements the Scanner interface.
 func (i *Int16) Scan(value interface{}) error {
 	if value == nil {
-		i.Int16, i.Valid = 0, false
+		i.Int16, i.Valid, i.Set = 0, false, false
 		return nil
 	}
-	i.Valid = true
+	i.Valid, i.Set = true, true
 	return convert.ConvertAssign(&i.Int16, value)
 }
 

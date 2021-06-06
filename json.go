@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/volatiletech/null/v8/convert"
+	"github.com/volatiletech/null/v9/convert"
 	"github.com/volatiletech/randomize"
 )
 
@@ -15,6 +15,7 @@ import (
 type JSON struct {
 	JSON  []byte
 	Valid bool
+	Set   bool
 }
 
 // NewJSON creates a new JSON
@@ -22,6 +23,7 @@ func NewJSON(b []byte, valid bool) JSON {
 	return JSON{
 		JSON:  b,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -37,6 +39,10 @@ func JSONFromPtr(b *[]byte) JSON {
 	}
 	n := NewJSON(*b, true)
 	return n
+}
+
+func (j JSON) IsSet() bool {
+	return j.Set
 }
 
 // Unmarshal will unmarshal your JSON stored in
@@ -60,6 +66,7 @@ func (j JSON) Unmarshal(dest interface{}) error {
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (j *JSON) UnmarshalJSON(data []byte) error {
+	j.Set = true
 	if data == nil {
 		return fmt.Errorf("json: cannot unmarshal nil into Go value of type null.JSON")
 	}
@@ -79,6 +86,7 @@ func (j *JSON) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (j *JSON) UnmarshalText(text []byte) error {
+	j.Set = true
 	if text == nil || len(text) == 0 {
 		j.JSON = nil
 		j.Valid = false
@@ -100,7 +108,7 @@ func (j *JSON) Marshal(obj interface{}) error {
 
 	// Call our implementation of
 	// JSON UnmarshalJSON through json.Unmarshal
-	// to set the result to the JSON object
+	// to Set the result to the JSON object
 	return json.Unmarshal(res, j)
 }
 
@@ -124,6 +132,7 @@ func (j JSON) MarshalText() ([]byte, error) {
 func (j *JSON) SetValid(n []byte) {
 	j.JSON = n
 	j.Valid = true
+	j.Set = true
 }
 
 // Ptr returns a pointer to this JSON's value, or a nil pointer if this JSON is null.
@@ -142,10 +151,10 @@ func (j JSON) IsZero() bool {
 // Scan implements the Scanner interface.
 func (j *JSON) Scan(value interface{}) error {
 	if value == nil {
-		j.JSON, j.Valid = []byte{}, false
+		j.JSON, j.Valid, j.Set = nil, false, false
 		return nil
 	}
-	j.Valid = true
+	j.Valid, j.Set = true, true
 	return convert.ConvertAssign(&j.JSON, value)
 }
 

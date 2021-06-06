@@ -6,20 +6,22 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/volatiletech/null/v8/convert"
+	"github.com/volatiletech/null/v9/convert"
 )
 
 // Bool is a nullable bool.
 type Bool struct {
 	Bool  bool
 	Valid bool
+	Set   bool
 }
 
 // NewBool creates a new Bool
-func NewBool(b bool, valid bool) Bool {
+func NewBool(b, valid bool) Bool {
 	return Bool{
 		Bool:  b,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -36,8 +38,14 @@ func BoolFromPtr(b *bool) Bool {
 	return NewBool(*b, true)
 }
 
+func (b Bool) IsSet() bool {
+	return b.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (b *Bool) UnmarshalJSON(data []byte) error {
+	b.Set = true
+
 	if bytes.Equal(data, NullBytes) {
 		b.Bool = false
 		b.Valid = false
@@ -54,6 +62,7 @@ func (b *Bool) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (b *Bool) UnmarshalText(text []byte) error {
+	b.Set = true
 	if text == nil || len(text) == 0 {
 		b.Valid = false
 		return nil
@@ -99,6 +108,7 @@ func (b Bool) MarshalText() ([]byte, error) {
 func (b *Bool) SetValid(v bool) {
 	b.Bool = v
 	b.Valid = true
+	b.Set = true
 }
 
 // Ptr returns a pointer to this Bool's value, or a nil pointer if this Bool is null.
@@ -117,10 +127,10 @@ func (b Bool) IsZero() bool {
 // Scan implements the Scanner interface.
 func (b *Bool) Scan(value interface{}) error {
 	if value == nil {
-		b.Bool, b.Valid = false, false
+		b.Bool, b.Valid, b.Set = false, false, false
 		return nil
 	}
-	b.Valid = true
+	b.Valid, b.Set = true, true
 	return convert.ConvertAssign(&b.Bool, value)
 }
 

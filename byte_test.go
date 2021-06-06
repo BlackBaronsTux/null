@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-var (
-	byteJSON = []byte(`"b"`)
-)
-
 func TestByteFrom(t *testing.T) {
 	i := ByteFrom('b')
 	assertByte(t, i, "ByteFrom()")
@@ -34,6 +30,9 @@ func TestUnmarshalByte(t *testing.T) {
 	err := json.Unmarshal(nullJSON, &null)
 	maybePanic(err)
 	assertNullByte(t, null, "null json")
+	if !null.Set {
+		t.Error("expected Set to be true")
+	}
 
 	var badType Byte
 	err = json.Unmarshal(boolJSON, &badType)

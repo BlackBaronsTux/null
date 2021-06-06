@@ -39,6 +39,9 @@ func TestUnmarshalInt(t *testing.T) {
 	err = json.Unmarshal(nullJSON, &null)
 	maybePanic(err)
 	assertNullInt(t, null, "null json")
+	if !null.Set {
+		t.Error("is not Set, but should be")
+	}
 
 	var badType Int
 	err = json.Unmarshal(boolJSON, &badType)

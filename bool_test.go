@@ -6,8 +6,7 @@ import (
 )
 
 var (
-	boolJSON  = []byte(`true`)
-	falseJSON = []byte(`false`)
+	boolJSON = []byte(`true`)
 )
 
 func TestBoolFrom(t *testing.T) {
@@ -31,15 +30,13 @@ func TestBoolFromPtr(t *testing.T) {
 }
 
 func TestUnmarshalBool(t *testing.T) {
-	var b Bool
-	err := json.Unmarshal(boolJSON, &b)
-	maybePanic(err)
-	assertBool(t, b, "bool json")
-
 	var null Bool
-	err = json.Unmarshal(nullJSON, &null)
+	err := json.Unmarshal(nullJSON, &null)
 	maybePanic(err)
 	assertNullBool(t, null, "null json")
+	if !null.Set {
+		t.Error("should be Set", err)
+	}
 
 	var badType Bool
 	err = json.Unmarshal(intJSON, &badType)

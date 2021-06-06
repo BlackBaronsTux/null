@@ -170,10 +170,9 @@ func ConvertAssign(dest, src interface{}) error {
 		if src == nil {
 			dv.Set(reflect.Zero(dv.Type()))
 			return nil
-		} else {
-			dv.Set(reflect.New(dv.Type().Elem()))
-			return ConvertAssign(dv.Interface(), src)
 		}
+		dv.Set(reflect.New(dv.Type().Elem()))
+		return ConvertAssign(dv.Interface(), src)
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		s := asString(src)
 		i64, err := strconv.ParseInt(s, 10, dv.Type().Bits())
@@ -216,11 +215,10 @@ func strconvErr(err error) error {
 func cloneBytes(b []byte) []byte {
 	if b == nil {
 		return nil
-	} else {
-		c := make([]byte, len(b))
-		copy(c, b)
-		return c
 	}
+	c := make([]byte, len(b))
+	copy(c, b)
+	return c
 }
 
 func asString(src interface{}) string {

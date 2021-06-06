@@ -15,6 +15,7 @@ import (
 type Int8 struct {
 	Int8  int8
 	Valid bool
+	Set   bool
 }
 
 // NewInt8 creates a new Int8
@@ -22,6 +23,7 @@ func NewInt8(i int8, valid bool) Int8 {
 	return Int8{
 		Int8:  i,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -38,8 +40,20 @@ func Int8FromPtr(i *int8) Int8 {
 	return NewInt8(*i, true)
 }
 
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (i Int8) IsValid() bool {
+	return i.Set && i.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (i Int8) IsSet() bool {
+	return i.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (i *Int8) UnmarshalJSON(data []byte) error {
+	i.Set = true
 	if bytes.Equal(data, NullBytes) {
 		i.Valid = false
 		i.Int8 = 0
@@ -62,7 +76,8 @@ func (i *Int8) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (i *Int8) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	i.Set = true
+	if len(text) == 0 {
 		i.Valid = false
 		return nil
 	}
@@ -95,6 +110,7 @@ func (i Int8) MarshalText() ([]byte, error) {
 func (i *Int8) SetValid(n int8) {
 	i.Int8 = n
 	i.Valid = true
+	i.Set = true
 }
 
 // Ptr returns a pointer to this Int8's value, or a nil pointer if this Int8 is null.
@@ -113,10 +129,10 @@ func (i Int8) IsZero() bool {
 // Scan implements the Scanner interface.
 func (i *Int8) Scan(value interface{}) error {
 	if value == nil {
-		i.Int8, i.Valid = 0, false
+		i.Int8, i.Valid, i.Set = 0, false, false
 		return nil
 	}
-	i.Valid = true
+	i.Valid, i.Set = true, true
 	return convert.ConvertAssign(&i.Int8, value)
 }
 

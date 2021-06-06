@@ -15,6 +15,7 @@ var NullBytes = []byte("null")
 type Bytes struct {
 	Bytes []byte
 	Valid bool
+	Set   bool
 }
 
 // NewBytes creates a new Bytes
@@ -22,6 +23,7 @@ func NewBytes(b []byte, valid bool) Bytes {
 	return Bytes{
 		Bytes: b,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -39,27 +41,41 @@ func BytesFromPtr(b *[]byte) Bytes {
 	return n
 }
 
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (b Bytes) IsValid() bool {
+	return b.Set && b.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (b Bytes) IsSet() bool {
+	return b.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (b *Bytes) UnmarshalJSON(data []byte) error {
+	b.Set = true
+
 	if bytes.Equal(data, NullBytes) {
 		b.Valid = false
 		b.Bytes = nil
 		return nil
 	}
 
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
+	var bv []byte
+	if err := json.Unmarshal(data, &bv); err != nil {
 		return err
 	}
 
-	b.Bytes = []byte(s)
+	b.Bytes = bv
 	b.Valid = true
 	return nil
 }
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (b *Bytes) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	b.Set = true
+	if len(text) == 0 {
 		b.Bytes = nil
 		b.Valid = false
 	} else {
@@ -72,10 +88,10 @@ func (b *Bytes) UnmarshalText(text []byte) error {
 
 // MarshalJSON implements json.Marshaler.
 func (b Bytes) MarshalJSON() ([]byte, error) {
-	if len(b.Bytes) == 0 || b.Bytes == nil {
+	if len(b.Bytes) == 0 {
 		return NullBytes, nil
 	}
-	return b.Bytes, nil
+	return json.Marshal(b.Bytes)
 }
 
 // MarshalText implements encoding.TextMarshaler.
@@ -90,6 +106,7 @@ func (b Bytes) MarshalText() ([]byte, error) {
 func (b *Bytes) SetValid(n []byte) {
 	b.Bytes = n
 	b.Valid = true
+	b.Set = true
 }
 
 // Ptr returns a pointer to this Bytes's value, or a nil pointer if this Bytes is null.
@@ -108,10 +125,10 @@ func (b Bytes) IsZero() bool {
 // Scan implements the Scanner interface.
 func (b *Bytes) Scan(value interface{}) error {
 	if value == nil {
-		b.Bytes, b.Valid = []byte{}, false
+		b.Bytes, b.Valid, b.Set = nil, false, false
 		return nil
 	}
-	b.Valid = true
+	b.Valid, b.Set = true, true
 	return convert.ConvertAssign(&b.Bytes, value)
 }
 

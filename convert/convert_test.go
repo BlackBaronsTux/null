@@ -114,17 +114,23 @@ var conversionTests = []conversionTest{
 	{s: 1.5, d: &scanraw, wantraw: sql.RawBytes("1.5")},
 
 	// Strings to integers
+	{s: "127", d: &scanint8, wantint: 127},
+	{s: "128", d: &scanint8, wanterr: `converting driver.Value type string ("128") to a int8: value out of range`},
+	{s: "32767", d: &scanint16, wantint: 32767},
+	{s: "32768", d: &scanint16, wanterr: `converting driver.Value type string ("32768") to a int16: value out of range`},
+	{s: "2147483647", d: &scanint32, wantint: 2147483647},
+	{s: "2147483648", d: &scanint32, wanterr: `converting driver.Value type string ("2147483648") to a int32: value out of range`},
 	{s: "255", d: &scanuint8, wantuint: 255},
-	{s: "256", d: &scanuint8, wanterr: "converting driver.Value type string (\"256\") to a uint8: value out of range"},
+	{s: "256", d: &scanuint8, wanterr: `converting driver.Value type string ("256") to a uint8: value out of range`},
 	{s: "256", d: &scanuint16, wantuint: 256},
 	{s: "-1", d: &scanint, wantint: -1},
-	{s: "foo", d: &scanint, wanterr: "converting driver.Value type string (\"foo\") to a int: invalid syntax"},
+	{s: "foo", d: &scanint, wanterr: `converting driver.Value type string ("foo") to a int: invalid syntax`},
 
 	// int64 to smaller integers
 	{s: int64(5), d: &scanuint8, wantuint: 5},
-	{s: int64(256), d: &scanuint8, wanterr: "converting driver.Value type int64 (\"256\") to a uint8: value out of range"},
+	{s: int64(256), d: &scanuint8, wanterr: `converting driver.Value type int64 ("256") to a uint8: value out of range`},
 	{s: int64(256), d: &scanuint16, wantuint: 256},
-	{s: int64(65536), d: &scanuint16, wanterr: "converting driver.Value type int64 (\"65536\") to a uint16: value out of range"},
+	{s: int64(65536), d: &scanuint16, wanterr: `converting driver.Value type int64 ("65536") to a uint16: value out of range`},
 
 	// True bools
 	{s: true, d: &scanbool, wantbool: true},
@@ -247,6 +253,27 @@ func TestConversions(t *testing.T) {
 				errf("want pointer to %v, got %v", *ct.wantptr, intPtrValue(ct.d))
 			}
 		}
+		if len(ct.wantraw) != 0 {
+			s := fmt.Sprintf("%v", ct.s)
+			if _, ok := ct.s.([]byte); ok {
+				s = fmt.Sprintf("%s", ct.s)
+			}
+			if s != string(ct.wantraw) {
+				errf("want %q, got: %s", string(ct.wantraw), s)
+			}
+		}
+		if len(ct.wantbytes) != 0 {
+			s := fmt.Sprintf("%v", ct.s)
+			if _, ok := ct.s.([]byte); ok {
+				s = fmt.Sprintf("%s", ct.s)
+			}
+			if timeVal, ok := ct.s.(time.Time); ok {
+				s = timeVal.Format(time.RFC3339Nano)
+			}
+			if s != string(ct.wantbytes) {
+				errf("want %q, got: %s", string(ct.wantbytes), s)
+			}
+		}
 		if ifptr, ok := ct.d.(*interface{}); ok {
 			if !reflect.DeepEqual(ct.wantiface, scaniface) {
 				errf("want interface %#v, got %#v", ct.wantiface, scaniface)
@@ -267,14 +294,18 @@ func TestConversions(t *testing.T) {
 
 func TestNullString(t *testing.T) {
 	var ns sql.NullString
-	ConvertAssign(&ns, []byte("foo"))
+	if err := ConvertAssign(&ns, []byte("foo")); err != nil {
+		t.Error(err)
+	}
 	if !ns.Valid {
 		t.Errorf("expecting not null")
 	}
 	if ns.String != "foo" {
 		t.Errorf("expecting foo; got %q", ns.String)
 	}
-	ConvertAssign(&ns, nil)
+	if err := ConvertAssign(&ns, nil); err != nil {
+		t.Error(err)
+	}
 	if ns.Valid {
 		t.Errorf("expecting null on nil")
 	}
@@ -290,8 +321,8 @@ type valueConverterTest struct {
 }
 
 var valueConverterTests = []valueConverterTest{
-	{driver.DefaultParameterConverter, sql.NullString{"hi", true}, "hi", ""},
-	{driver.DefaultParameterConverter, sql.NullString{"", false}, nil, ""},
+	{driver.DefaultParameterConverter, sql.NullString{String: "hi", Valid: true}, "hi", ""},
+	{driver.DefaultParameterConverter, sql.NullString{String: "", Valid: false}, nil, ""},
 }
 
 func TestValueConverters(t *testing.T) {

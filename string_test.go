@@ -13,10 +13,6 @@ var (
 	invalidJSON = []byte(`:)`)
 )
 
-type stringInStruct struct {
-	Test String `json:"test,omitempty"`
-}
-
 func TestStringFrom(t *testing.T) {
 	str := StringFrom("test")
 	assertStr(t, str, "StringFrom() string")
@@ -54,6 +50,9 @@ func TestUnmarshalString(t *testing.T) {
 	err = json.Unmarshal(nullJSON, &null)
 	maybePanic(err)
 	assertNullStr(t, null, "null json")
+	if !null.Set {
+		t.Error("should be Set")
+	}
 
 	var badType String
 	err = json.Unmarshal(boolJSON, &badType)
@@ -110,6 +109,9 @@ func TestMarshalString(t *testing.T) {
 }
 
 // Tests omitempty... broken until Go 1.4
+// type stringInStruct struct {
+// 	Test String `json:"test,omitempty"`
+// }
 // func TestMarshalStringInStruct(t *testing.T) {
 // 	obj := stringInStruct{Test: StringFrom("")}
 // 	data, err := json.Marshal(obj)

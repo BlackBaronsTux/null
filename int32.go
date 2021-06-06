@@ -16,6 +16,7 @@ import (
 type Int32 struct {
 	Int32 int32
 	Valid bool
+	Set   bool
 }
 
 // NewInt32 creates a new Int32
@@ -23,6 +24,7 @@ func NewInt32(i int32, valid bool) Int32 {
 	return Int32{
 		Int32: i,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -39,8 +41,20 @@ func Int32FromPtr(i *int32) Int32 {
 	return NewInt32(*i, true)
 }
 
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (i Int32) IsValid() bool {
+	return i.Set && i.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (i Int32) IsSet() bool {
+	return i.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (i *Int32) UnmarshalJSON(data []byte) error {
+	i.Set = true
 	if bytes.Equal(data, NullBytes) {
 		i.Valid = false
 		i.Int32 = 0
@@ -63,7 +77,8 @@ func (i *Int32) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (i *Int32) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	i.Set = true
+	if len(text) == 0 {
 		i.Valid = false
 		return nil
 	}
@@ -96,6 +111,7 @@ func (i Int32) MarshalText() ([]byte, error) {
 func (i *Int32) SetValid(n int32) {
 	i.Int32 = n
 	i.Valid = true
+	i.Set = true
 }
 
 // Ptr returns a pointer to this Int32's value, or a nil pointer if this Int32 is null.
@@ -114,10 +130,10 @@ func (i Int32) IsZero() bool {
 // Scan implements the Scanner interface.
 func (i *Int32) Scan(value interface{}) error {
 	if value == nil {
-		i.Int32, i.Valid = 0, false
+		i.Int32, i.Valid, i.Set = 0, false, false
 		return nil
 	}
-	i.Valid = true
+	i.Valid, i.Set = true, true
 	return convert.ConvertAssign(&i.Int32, value)
 }
 

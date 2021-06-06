@@ -13,6 +13,7 @@ import (
 type Time struct {
 	Time  time.Time
 	Valid bool
+	Set   bool
 }
 
 // NewTime creates a new Time.
@@ -20,6 +21,7 @@ func NewTime(t time.Time, valid bool) Time {
 	return Time{
 		Time:  t,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -36,6 +38,17 @@ func TimeFromPtr(t *time.Time) Time {
 	return NewTime(*t, true)
 }
 
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (t Time) IsValid() bool {
+	return t.Set && t.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (t Time) IsSet() bool {
+	return t.Set
+}
+
 // MarshalJSON implements json.Marshaler.
 func (t Time) MarshalJSON() ([]byte, error) {
 	if !t.Valid {
@@ -46,6 +59,7 @@ func (t Time) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (t *Time) UnmarshalJSON(data []byte) error {
+	t.Set = true
 	if bytes.Equal(data, NullBytes) {
 		t.Valid = false
 		t.Time = time.Time{}
@@ -70,7 +84,8 @@ func (t Time) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (t *Time) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	t.Set = true
+	if len(text) == 0 {
 		t.Valid = false
 		return nil
 	}
@@ -85,6 +100,7 @@ func (t *Time) UnmarshalText(text []byte) error {
 func (t *Time) SetValid(v time.Time) {
 	t.Time = v
 	t.Valid = true
+	t.Set = true
 }
 
 // Ptr returns a pointer to this Time's value, or a nil pointer if this Time is null.
@@ -107,12 +123,14 @@ func (t *Time) Scan(value interface{}) error {
 	case time.Time:
 		t.Time = x
 	case nil:
-		t.Valid = false
+		t.Valid, t.Set = false, false
 		return nil
 	default:
 		err = fmt.Errorf("null: cannot scan type %T into null.Time: %v", value, value)
 	}
-	t.Valid = err == nil
+	if err == nil {
+		t.Valid, t.Set = true, true
+	}
 	return err
 }
 

@@ -13,6 +13,7 @@ import (
 type Int64 struct {
 	Int64 int64
 	Valid bool
+	Set   bool
 }
 
 // NewInt64 creates a new Int64
@@ -20,6 +21,7 @@ func NewInt64(i int64, valid bool) Int64 {
 	return Int64{
 		Int64: i,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -36,8 +38,20 @@ func Int64FromPtr(i *int64) Int64 {
 	return NewInt64(*i, true)
 }
 
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (i Int64) IsValid() bool {
+	return i.Set && i.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (i Int64) IsSet() bool {
+	return i.Set
+}
+
 // UnmarshalJSON implements json.Unmarshaler.
 func (i *Int64) UnmarshalJSON(data []byte) error {
+	i.Set = true
 	if bytes.Equal(data, NullBytes) {
 		i.Valid = false
 		i.Int64 = 0
@@ -54,7 +68,8 @@ func (i *Int64) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (i *Int64) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	i.Set = true
+	if len(text) == 0 {
 		i.Valid = false
 		return nil
 	}
@@ -84,6 +99,7 @@ func (i Int64) MarshalText() ([]byte, error) {
 func (i *Int64) SetValid(n int64) {
 	i.Int64 = n
 	i.Valid = true
+	i.Set = true
 }
 
 // Ptr returns a pointer to this Int64's value, or a nil pointer if this Int64 is null.
@@ -102,10 +118,10 @@ func (i Int64) IsZero() bool {
 // Scan implements the Scanner interface.
 func (i *Int64) Scan(value interface{}) error {
 	if value == nil {
-		i.Int64, i.Valid = 0, false
+		i.Int64, i.Valid, i.Set = 0, false, false
 		return nil
 	}
-	i.Valid = true
+	i.Valid, i.Set = true, true
 	return convert.ConvertAssign(&i.Int64, value)
 }
 

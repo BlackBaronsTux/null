@@ -7,11 +7,13 @@ import (
 )
 
 var (
-	bytesJSON = []byte(`"hello"`)
+	hello        = []byte("hello")
+	bytesJSON    = []byte(`"hello"`)
+	b64BytesJSON = []byte(`"aGVsbG8="`)
 )
 
 func TestBytesFrom(t *testing.T) {
-	i := BytesFrom([]byte(`hello`))
+	i := BytesFrom(hello)
 	assertBytes(t, i, "BytesFrom()")
 
 	zero := BytesFrom(nil)
@@ -26,7 +28,7 @@ func TestBytesFrom(t *testing.T) {
 }
 
 func TestBytesFromPtr(t *testing.T) {
-	n := []byte(`hello`)
+	n := hello
 	iptr := &n
 	i := BytesFromPtr(iptr)
 	assertBytes(t, i, "BytesFromPtr()")
@@ -37,7 +39,7 @@ func TestBytesFromPtr(t *testing.T) {
 
 func TestUnmarshalBytes(t *testing.T) {
 	var i Bytes
-	err := json.Unmarshal(bytesJSON, &i)
+	err := json.Unmarshal(b64BytesJSON, &i)
 	maybePanic(err)
 	assertBytes(t, i, "[]byte json")
 
@@ -48,18 +50,24 @@ func TestUnmarshalBytes(t *testing.T) {
 	}
 
 	var null Bytes
-	err = null.UnmarshalJSON([]byte("null"))
-	if null.Valid == true {
+	err = null.UnmarshalJSON(NullBytes)
+	if err != nil {
+		t.Error(err)
+	}
+	if null.Valid {
 		t.Errorf("expected Valid to be false, got true")
 	}
 	if null.Bytes != nil {
 		t.Errorf("Expected Bytes to be nil, but was not: %#v %#v", null.Bytes, []byte(`null`))
 	}
+	if !null.Set {
+		t.Errorf("Expected Set to be true; got false")
+	}
 }
 
 func TestTextUnmarshalBytes(t *testing.T) {
 	var i Bytes
-	err := i.UnmarshalText([]byte(`hello`))
+	err := i.UnmarshalText(hello)
 	maybePanic(err)
 	assertBytes(t, i, "UnmarshalText() []byte")
 
@@ -70,10 +78,10 @@ func TestTextUnmarshalBytes(t *testing.T) {
 }
 
 func TestMarshalBytes(t *testing.T) {
-	i := BytesFrom([]byte(`"hello"`))
+	i := BytesFrom(hello)
 	data, err := json.Marshal(i)
 	maybePanic(err)
-	assertJSONEquals(t, data, `"hello"`, "non-empty json marshal")
+	assertJSONEquals(t, data, string(b64BytesJSON), "non-empty json marshal")
 
 	// invalid values should be encoded as null
 	null := NewBytes(nil, false)
@@ -83,7 +91,7 @@ func TestMarshalBytes(t *testing.T) {
 }
 
 func TestMarshalBytesText(t *testing.T) {
-	i := BytesFrom([]byte(`"hello"`))
+	i := BytesFrom(bytesJSON)
 	data, err := i.MarshalText()
 	maybePanic(err)
 	assertJSONEquals(t, data, `"hello"`, "non-empty text marshal")
@@ -98,7 +106,7 @@ func TestMarshalBytesText(t *testing.T) {
 func TestBytesPointer(t *testing.T) {
 	i := BytesFrom([]byte(`"hello"`))
 	ptr := i.Ptr()
-	if !bytes.Equal(*ptr, []byte(`"hello"`)) {
+	if !bytes.Equal(*ptr, bytesJSON) {
 		t.Errorf("bad %s []byte: %#v ≠ %s\n", "pointer", ptr, `"hello"`)
 	}
 
@@ -110,7 +118,7 @@ func TestBytesPointer(t *testing.T) {
 }
 
 func TestBytesIsZero(t *testing.T) {
-	i := BytesFrom([]byte(`"hello"`))
+	i := BytesFrom(bytesJSON)
 	if i.IsZero() {
 		t.Errorf("IsZero() should be false")
 	}
@@ -129,7 +137,7 @@ func TestBytesIsZero(t *testing.T) {
 func TestBytesSetValid(t *testing.T) {
 	change := NewBytes(nil, false)
 	assertNullBytes(t, change, "SetValid()")
-	change.SetValid([]byte(`hello`))
+	change.SetValid(hello)
 	assertBytes(t, change, "SetValid()")
 }
 
@@ -146,8 +154,8 @@ func TestBytesScan(t *testing.T) {
 }
 
 func assertBytes(t *testing.T, i Bytes, from string) {
-	if !bytes.Equal(i.Bytes, []byte("hello")) {
-		t.Errorf("bad %s []byte: %v ≠ %v\n", from, string(i.Bytes), string([]byte(`hello`)))
+	if !bytes.Equal(i.Bytes, hello) {
+		t.Errorf("bad %s []byte: %v ≠ %v\n", from, string(i.Bytes), "hello")
 	}
 	if !i.Valid {
 		t.Error(from, "is invalid, but should be valid")

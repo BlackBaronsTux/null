@@ -13,6 +13,7 @@ import (
 type String struct {
 	String string
 	Valid  bool
+	Set    bool
 }
 
 // StringFrom creates a new String that will never be blank.
@@ -33,11 +34,24 @@ func NewString(s string, valid bool) String {
 	return String{
 		String: s,
 		Valid:  valid,
+		Set:    true,
 	}
+}
+
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (s String) IsValid() bool {
+	return s.Set && s.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (s String) IsSet() bool {
+	return s.Set
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
 func (s *String) UnmarshalJSON(data []byte) error {
+	s.Set = true
 	if bytes.Equal(data, NullBytes) {
 		s.String = ""
 		s.Valid = false
@@ -70,7 +84,8 @@ func (s String) MarshalText() ([]byte, error) {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (s *String) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	s.Set = true
+	if len(text) == 0 {
 		s.Valid = false
 		return nil
 	}
@@ -84,6 +99,7 @@ func (s *String) UnmarshalText(text []byte) error {
 func (s *String) SetValid(v string) {
 	s.String = v
 	s.Valid = true
+	s.Set = true
 }
 
 // Ptr returns a pointer to this String's value, or a nil pointer if this String is null.
@@ -102,10 +118,10 @@ func (s String) IsZero() bool {
 // Scan implements the Scanner interface.
 func (s *String) Scan(value interface{}) error {
 	if value == nil {
-		s.String, s.Valid = "", false
+		s.String, s.Valid, s.Set = "", false, false
 		return nil
 	}
-	s.Valid = true
+	s.Valid, s.Set = true, true
 	return convert.ConvertAssign(&s.String, value)
 }
 

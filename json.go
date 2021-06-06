@@ -11,10 +11,17 @@ import (
 	"github.com/volatiletech/randomize"
 )
 
-// JSON is a nullable []byte.
+// JSON is a nullable []byte that contains JSON.
+//
+// You might want to use this in the case where you have say a nullable
+// JSON column in postgres for instance, where there is one layer of null for
+// the postgres column, and then you also have the opportunity to have null
+// as a value contained in the json. When unmarshalling json however you
+// cannot set 'null' as a value.
 type JSON struct {
 	JSON  []byte
 	Valid bool
+	Set   bool
 }
 
 // NewJSON creates a new JSON
@@ -22,6 +29,7 @@ func NewJSON(b []byte, valid bool) JSON {
 	return JSON{
 		JSON:  b,
 		Valid: valid,
+		Set:   true,
 	}
 }
 
@@ -37,6 +45,17 @@ func JSONFromPtr(b *[]byte) JSON {
 	}
 	n := NewJSON(*b, true)
 	return n
+}
+
+// IsValid returns true if this carries and explicit value and
+// is not null.
+func (j JSON) IsValid() bool {
+	return j.Set && j.Valid
+}
+
+// IsSet returns true if this carries an explicit value (null inclusive)
+func (j JSON) IsSet() bool {
+	return j.Set
 }
 
 // Unmarshal will unmarshal your JSON stored in
@@ -59,13 +78,25 @@ func (j JSON) Unmarshal(dest interface{}) error {
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
+//
+// Example if you have a struct with a null.JSON called v:
+//
+// 		{}          -> does not call unmarshaljson: !set & !valid
+// 		{"v": null} -> calls unmarshaljson, set & !valid
+//      {"v": {}}   -> calls unmarshaljson, set & valid (json value is '{}')
+//
+// That's to say if 'null' is passed in at the json level we do not capture that
+// value - instead we set the value-level null flag so that an sql value will
+// turn out null.
 func (j *JSON) UnmarshalJSON(data []byte) error {
 	if data == nil {
-		return fmt.Errorf("json: cannot unmarshal nil into Go value of type null.JSON")
+		return fmt.Errorf("null: cannot unmarshal nil into Go value of type null.JSON")
 	}
 
+	j.Set = true
+
 	if bytes.Equal(data, NullBytes) {
-		j.JSON = NullBytes
+		j.JSON = nil
 		j.Valid = false
 		return nil
 	}
@@ -79,7 +110,8 @@ func (j *JSON) UnmarshalJSON(data []byte) error {
 
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (j *JSON) UnmarshalText(text []byte) error {
-	if text == nil || len(text) == 0 {
+	j.Set = true
+	if len(text) == 0 {
 		j.JSON = nil
 		j.Valid = false
 	} else {
@@ -100,7 +132,7 @@ func (j *JSON) Marshal(obj interface{}) error {
 
 	// Call our implementation of
 	// JSON UnmarshalJSON through json.Unmarshal
-	// to set the result to the JSON object
+	// to Set the result to the JSON object
 	return json.Unmarshal(res, j)
 }
 
@@ -124,6 +156,7 @@ func (j JSON) MarshalText() ([]byte, error) {
 func (j *JSON) SetValid(n []byte) {
 	j.JSON = n
 	j.Valid = true
+	j.Set = true
 }
 
 // Ptr returns a pointer to this JSON's value, or a nil pointer if this JSON is null.
@@ -142,10 +175,10 @@ func (j JSON) IsZero() bool {
 // Scan implements the Scanner interface.
 func (j *JSON) Scan(value interface{}) error {
 	if value == nil {
-		j.JSON, j.Valid = []byte{}, false
+		j.JSON, j.Valid, j.Set = nil, false, false
 		return nil
 	}
-	j.Valid = true
+	j.Valid, j.Set = true, true
 	return convert.ConvertAssign(&j.JSON, value)
 }
 
